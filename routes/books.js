@@ -1,8 +1,11 @@
 const express = require("express");
 const Book = require("../models/book");
+const jsonschema = require("jsonschema");
+const postBookSchema = require("../schemas/bookSchema.json");
+const updateBookSchema = require("../schemas/bookSchema.json");
+const ExpressError = require("../expressError");
 
 const router = new express.Router();
-
 
 /** GET / => {books: [book, ...]}  */
 
@@ -30,6 +33,15 @@ router.get("/:id", async function (req, res, next) {
 
 router.post("/", async function (req, res, next) {
   try {
+    const checkReq = jsonschema.validate(req.body, postBookSchema);
+    if (!checkReq.valid) {
+      const errList = checkReq.errors.map((e) => ({
+        name: e.name,
+        message: e.message,
+      }));
+      return next(new ExpressError(errList, 400));
+    }
+
     const book = await Book.create(req.body);
     return res.status(201).json({ book });
   } catch (err) {
@@ -41,6 +53,15 @@ router.post("/", async function (req, res, next) {
 
 router.put("/:isbn", async function (req, res, next) {
   try {
+    const checkReq = jsonschema.validate(req.body, updateBookSchema);
+    if (!checkReq.valid) {
+      const errList = checkReq.errors.map(({ name, message }) => ({
+        name,
+        message,
+      }));
+
+      return next(new ExpressError(errList, 400));
+    }
     const book = await Book.update(req.params.isbn, req.body);
     return res.json({ book });
   } catch (err) {
